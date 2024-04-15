@@ -1,4 +1,14 @@
-setuptools
-requests
-playwright
-playwright-stealth
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "*"
+playwright = "*"
+playwright-stealth = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
