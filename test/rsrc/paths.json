@@ -1,5 +1,6 @@
 {
     "usernames":"db/usernames.csv",
     "usernames_sent":"db/usernames_sent.csv",
-    "usernames_failed":"db/usernames_failed.csv"
+    "usernames_failed":"db/usernames_failed.csv",
+    "toss_accounts":"rdt/toss_accounts.csv"
 }

@@ -1,7 +1,8 @@
 {
     "proxy":{
         "proxy":"localhost",
-        "proxyRotationLink":""
+        "proxyRotationLink":"",
+        "proxyRotationCooldown":20
     },
     "cooldown":5,
     "headless":false,

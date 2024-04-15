@@ -2,8 +2,10 @@
     "usernameLocator":"#loginUsername",
     "passwordLocator":"#loginPassword",
     "loginButtonLocator":"body > div > main > div.OnboardingStep.Onboarding__step.mode-auth > div > div.Step__content > form > fieldset:nth-child(8) > button",
-    "messageInputLocator":"body > faceplate-app > rs-app div.container > rs-direct-chat section > rs-message-composer form > div > textarea",
-    "sendButtonLocator":"body > faceplate-app > rs-app div.container > rs-direct-chat section > rs-message-composer form > button.button-send.button-medium.px-\\[length\\:var\\(--rem8\\)\\].button-plain.icon.button.inline-flex.items-center.justify-center",
-    "receiverLocator":"body > faceplate-app > rs-app div.container > rs-direct-chat section > header > div.max-w-\\[calc\\(100\\%_-_40px\\)\\].pl-xs.mr-auto > div",
-    "unableToDMLocator":"body > faceplate-app > faceplate-toaster > faceplate-toast"
+    "messageInputLocator":"body > faceplate-app:nth-child(1) > rs-app:nth-child(1) .container > rs-direct-chat:nth-child(2) .room > rs-message-composer:nth-child(3) .text-tone-1",
+    "sendButtonLocator":"body > faceplate-app:nth-child(1) > rs-app:nth-child(1) .container > rs-direct-chat:nth-child(2) .room > rs-message-composer:nth-child(3) .button-send",
+    "chatReceiverLocator":"section > header > div.max-w-\\[calc\\(100\\%_-_40px\\)\\].pl-xs.mr-auto > div",
+    "roomReceiverLocator":"main > header > div.max-w-\\[calc\\(100\\%_-_40px\\)\\].pl-xs.mr-auto > div",
+    "unableToDMLocator":"body > faceplate-app > faceplate-toaster > faceplate-toast",
+    "unableToDMCloseLocator":"body > faceplate-app > faceplate-toaster > faceplate-toast > div:nth-child(2) > button"
 }
