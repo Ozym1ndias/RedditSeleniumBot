@@ -12,8 +12,14 @@ This bot was developed on a Linux machine, it may need some modifications to wor
 # In progress
 Add a UI(User Interface). I haven't started working on this, I think the bot will remain a CLI-only tool for now.
 
+# Prerequisites
+0 - Have ```Python``` and ```Pip``` installed. This project was developed with Python 3.11.8<br>
+1 - Clone this repository running the command ```git clone https://github.com/hamzaaitbrik/RedditDMBot.git``` or simply [Download it](https://github.com/hamzaaitbrik/RedditDMBot/archive/refs/heads/playwright.zip).<br>
+2 - Install ```Pipenv``` using the command ```pip install pipenv```.<br>
+3 - Run ```pipenv install``` inside the project to install its dependencies.<br>
+4 - Run ```playwright install Chromium``` or ```python -m playwright install Chromium``` to install Playwright dependencies(browser).<br>
+
 # How to use
-0 - Have Python and Pip installed. Clone this repository running the command ```git clone https://github.com/hamzaaitbrik/RedditDMBot.git``` or simply [Download it](https://github.com/hamzaaitbrik/RedditDMBot/archive/refs/heads/playwright.zip). Then run ```pip install -r Pipfile``` to install dependencies, then run ```playwright install Chromium``` or ```python -m playwright install Chromium``` to install Playwright dependencies.<br>
 1 - Add accounts to ```rdt/account.json```. Refer to [rdt/README](https://github.com/hamzaaitbrik/RedditDMBot/blob/playwright/rdt/README.md) to see how to properly add accounts.<br>
 2 - Change what needs to be changed in ```rsrc/config.json```. Refer to [rsrc/README](https://github.com/hamzaaitbrik/RedditDMBot/blob/playwright/rsrc/README.md) to see how to change values to meet your needs.<br>
 3 - Fill ```db/usernames.csv``` with all the usernames you want to DM.<br>
