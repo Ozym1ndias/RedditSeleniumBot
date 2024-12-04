@@ -62,7 +62,7 @@ class Modules:
             )
     
     @staticmethod
-    def manageProxyExtension(index: int, proxyBackendPath: str, proxy: str) -> None:
+    def manageProxyExtension(index: int, proxy_backend_path: str, proxy: str) -> None:
         """
             this function is responsible for adding and removing proxy from rsrc/extensions/proxy
             this is a really important function that would enable the software to rotate between proxies
@@ -73,10 +73,10 @@ class Modules:
 
                 proxyList, proxy_backend = proxy.split(':'), str()
                 host, port, username, password = proxyList[0], proxyList[1], proxyList[2], proxyList[3]
-                with open(proxyBackendPath, 'r') as proxy_backend_js:
+                with open(proxy_backend_path, 'r') as proxy_backend_js:
                     proxy_backend = proxy_backend_js.read()
                 proxy_backend = proxy_backend.replace(host, '_host').replace(port, '_port').replace(username, '_username').replace(password, '_password')
-                with open(proxyBackendPath, 'w') as proxy_backend_js:
+                with open(proxy_backend_path, 'w') as proxy_backend_js:
                     proxy_backend_js.write(proxy_backend)
                 Modules.log(0, f'[RedditDMBot] - Proxy {proxy} was removed successfully.')
 
@@ -84,10 +84,10 @@ class Modules:
 
                 proxyList, proxy_backend = proxy.split(':'), str()
                 host, port, username, password = proxyList[0], proxyList[1], proxyList[2], proxyList[3]
-                with open(proxyBackendPath, 'r') as proxy_backend_js:
+                with open(proxy_backend_path, 'r') as proxy_backend_js:
                     proxy_backend = proxy_backend_js.read()
                 proxy_backend = proxy_backend.replace('_host', host).replace('_port', port).replace('_username', username).replace('_password', password)
-                with open(proxyBackendPath, 'w') as proxy_backend_js:
+                with open(proxy_backend_path, 'w') as proxy_backend_js:
                     proxy_backend_js.write(proxy_backend)
                 Modules.log(0, f'[RedditDMBot] - Proxy {proxy} was removed successfully.')
 
@@ -144,25 +144,62 @@ class Modules:
 async def RedditDMBot(
         config: dict,
         links: dict,
+        paths: dict,
+        proxy: str,
         used_accounts: list,
         account: dict,
         target: str
-):
+) -> None:
     """
         main function responsible for sending a DM
     """
     # initializing a config instance for the browser
-    browserConfig = nodriver.Config()
-    browserConfig.headless = config['headless']
-    browserConfig.browser_args = config['browser_args']
+    browser_config = nodriver.Config()
 
-    # initializing an instance of nodriver
-    instance = await nodriver.start(
-        config = browserConfig
+    # headless or headfull?
+    browser_config.headless = config['headless']
+
+    # adding arguments to the configuration to initiate the browser with
+    browser_config.browser_args = config['browser_args']
+
+    # changing proxy configuration to add to the browser
+    if(proxy != 'localhost'): # in case there are proxies for the software to use
+
+        Modules.manageProxyExtension(
+            index = 1,
+            proxy_backend_path = paths['proxy']['proxy_backend_path'],
+            proxy = proxy
+        )
+        ip = loads(
+                get(
+                    links['GET_CONNECTION_IP'],
+                    proxies={
+                        'http':f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}",
+                        "https":f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}"
+                    }
+                ).text
+            )['origin']
+        
+        browser_config.add_extension( # adding proxy extension
+            extension_path = paths['proxy']['proxy_extension_path']
+        )
+        
+    else: # in case no proxy was provided
+
+        ip = loads(
+                get(
+                    links['GET_CONNECTION_IP']
+                ).text
+            )['origin']
+
+    # initializing a browser of nodriver
+    browser = await nodriver.start(
+        config = browser_config
     )
 
-    # getting Reddit's login page to start the spam
-    tab = instance.get(links['REDDIT_LOGIN_PAGE_URL'])
+    # creating an instance by navigating to Reddit's login page
+
+    instance = browser.get(links['REDDIT_LOGIN_PAGE_URL'])
 
     async with async_playwright() as playwright:
         device = playwright.devices['Desktop Chrome']
