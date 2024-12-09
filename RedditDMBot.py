@@ -271,10 +271,8 @@ async def RedditDMBot(
         await send_message_button.click()
 
     except:
-        # code
-        import traceback
-        print(traceback.format_exc())
-        sleep(500)
+        
+        Modules.log(2, f'[RedditDMBot] - An error occured while trying to DM {target} with Reddit account {account["username"]}:{account["password"]} @ {ip}.')
 
     finally: # finally rotating proxy IP if a rotation link exists
 
@@ -282,7 +280,8 @@ async def RedditDMBot(
             Modules.log(-1, '[RedditDMBot] Rotating proxy IP...')
             get(config['proxy']['proxy_rotation_link'])
             sleep(config['proxy']['proxy_rotation_link'])
-        await browser.close()
+        await instance.close()
+        await browser.stop()
 
 
 
@@ -290,10 +289,15 @@ async def RedditDMBot(
 
 
 if __name__ == '__main__': # software entry point
+
     config, paths, links, locators = Modules.getConfig(), Modules.getPaths(), Modules.getLinks(), Modules.getLocators()
+
     Modules.dbToList(paths['usernames'],list_usernames)
+
     accounts, used_accounts = Modules.getAccounts(), list()
+
     while(len(list_usernames) != 0): # while there are usernames to send DM to
+
         username = choice(list_usernames) # getting a random username from the list of usernames to DM
         if(len(accounts) == 0): # to check if all accounts are used
             accounts, used_accounts = used_accounts, list() # repopulates accounts with used_accounts and reinitialize used_accounts to an empty list
@@ -317,4 +321,5 @@ if __name__ == '__main__': # software entry point
                 target = username
             )
         ) # entry point
+
     Modules.log(-1, '[RedditDMBot] - Done.')
