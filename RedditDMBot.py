@@ -214,8 +214,22 @@ async def RedditDMBot(
 
         try: # logging in to Reddit
 
-            instance.close()
-            browser.stop()
+            # finding the username input and filling it
+            username_input = await instance.select(locators['username_input_locator'], timeout = 5)
+            await username_input.send_keys(account['username'])
+
+            # finding the password input and filling it
+            password_input = await instance.select(locators['password_input_locator'], timeout = 5)
+            await password_input.send_keys(account['password'])
+
+            # finding and clicking the log in button
+            login_button = await instance.find('Log In', best_match = True)
+            await login_button.click()
+
+        except TimeoutError: # incase of wrong locators
+
+            await instance.close()
+            await browser.stop()
 
             return asyncio.run(
                 RedditDMBot(
@@ -229,20 +243,6 @@ async def RedditDMBot(
                     target = username
                     )
             )
-
-        except TimeoutError: # incase of wrong locators
-
-            # finding the username input and filling it
-            username_input = await instance.find('Email or username', best_match = True)
-            await username_input.send_keys(account['username'])
-
-            # finding the password input and filling it
-            password_input = await instance.find('Password', best_match = True)
-            await password_input.send_keys(account['password'])
-
-            # finding and clicking the log in button
-            login_button = await instance.find('Log In', best_match = True)
-            await login_button.click()
         
         except: # in case of other error
 
