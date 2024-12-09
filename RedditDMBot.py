@@ -3,7 +3,7 @@ from modules import *
 
 
 # Initializing components
-config, links, paths, locators = getConfig(), getLinks(), getPaths(), getLocators()
+#config, links, paths, locators = getConfig(), getLinks(), getPaths(), getLocators()
 list_usernames, usernames_sent = list(), list()
 #
 
@@ -102,6 +102,11 @@ class Modules:
     # getting necessary data: configuration, Reddit account(s), locators of Reddit pages, necessary links, and more for the program to function
 
     @staticmethod
+    def getAccounts() -> list:
+        with open('rdt/accounts.json','r') as accounts:
+            return load(accounts)
+
+    @staticmethod
     def getProxies() -> list:
         with open('rsrc/proxies.json','r') as proxies:
             return load(proxies)
@@ -145,6 +150,7 @@ async def RedditDMBot(
         config: dict,
         links: dict,
         paths: dict,
+        locators: dict,
         proxy: str,
         used_accounts: list,
         account: dict,
@@ -153,144 +159,140 @@ async def RedditDMBot(
     """
         main function responsible for sending a DM
     """
-    # initializing a config instance for the browser
-    browser_config = nodriver.Config()
-
-    # headless or headfull?
-    browser_config.headless = config['headless']
-
-    # adding arguments to the configuration to initiate the browser with
-    browser_config.browser_args = config['browser_args']
-
-    # changing proxy configuration to add to the browser
-    if(proxy != 'localhost'): # in case there are proxies for the software to use
-
-        Modules.manageProxyExtension(
-            index = 1,
-            proxy_backend_path = paths['proxy']['proxy_backend_path'],
-            proxy = proxy
+    try:
+        # initializing a config instance for the browser
+        browser_config = nodriver.Config(
+            browser_args = config['browser_args']
         )
-        ip = loads(
-                get(
-                    links['GET_CONNECTION_IP'],
-                    proxies={
-                        'http':f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}",
-                        "https":f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}"
-                    }
-                ).text
-            )['origin']
-        
-        browser_config.add_extension( # adding proxy extension
-            extension_path = paths['proxy']['proxy_extension_path']
-        )
-        
-    else: # in case no proxy was provided
 
-        ip = loads(
-                get(
-                    links['GET_CONNECTION_IP']
-                ).text
-            )['origin']
+        # headless or headfull?
+        browser_config.headless = config['headless']
 
-    # initializing a browser of nodriver
-    browser = await nodriver.start(
-        config = browser_config
-    )
+        # adding arguments to the configuration to initiate the browser with
+        #browser_config.browser_args = config['browser_args']
 
-    # creating an instance by navigating to Reddit's login page
+        # changing proxy configuration to add to the browser
+        if(proxy != 'localhost'): # in case there are proxies for the software to use
 
-    instance = browser.get(links['REDDIT_LOGIN_PAGE_URL'])
-
-    async with async_playwright() as playwright:
-        device = playwright.devices['Desktop Chrome']
-        if(config['proxy']['proxy'] == 'localhost'):
-            browser = await playwright.chromium.launch(
-                headless = config['headless']
+            Modules.manageProxyExtension(
+                index = 1,
+                proxy_backend_path = paths['proxy']['proxy_backend_path'],
+                proxy = proxy
             )
             ip = loads(
-                get(
-                    links['getConnectionIP']
-                ).text
-            )['origin']
-        else:
-            browser = await playwright.chromium.launch(
-                headless = config['headless'],
-                proxy = {
-                    "server":f"{config['proxy']['proxy'].split(':')[0]}:{config['proxy']['proxy'].split(':')[1]}",
-                    "username":config['proxy']['proxy'].split(':')[2],
-                    "password":config['proxy']['proxy'].split(':')[3]
-                }
+                    get(
+                        links['GET_CONNECTION_IP'],
+                        proxies={
+                            'http':f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}",
+                            "https":f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}"
+                        }
+                    ).text
+                )['origin']
+            
+            browser_config.add_extension( # adding proxy extension
+                extension_path = paths['proxy']['proxy_extension_path']
             )
-            ip = loads(
-                get(
-                    links['getConnectionIP'],
-                    proxies={
-                        'http':f"http://{config['proxy']['proxy'].split(':')[2]}:{config['proxy']['proxy'].split(':')[3]}@{config['proxy']['proxy'].split(':')[0]}:{config['proxy']['proxy'].split(':')[1]}",
-                        "https":f"http://{config['proxy']['proxy'].split(':')[2]}:{config['proxy']['proxy'].split(':')[3]}@{config['proxy']['proxy'].split(':')[0]}:{config['proxy']['proxy'].split(':')[1]}"
-                    }
-                ).text
-            )['origin']
-        context = await browser.new_context(**device)
-        #context.set_default_timeout(5000)
-        page = await context.new_page()
-        await stealth_async(page)
-        try:
-            await page.goto(links['REDDIT_LOGIN_PAGE_URL'])
-            await page.wait_for_load_state('networkidle')
-            await page.locator(locators['usernameLocator']).fill(account['username'])
-            await page.locator(locators['passwordLocator']).fill(account['password'])
-            await page.locator(locators['loginButtonLocator']).click()
-            sleep(uniform(2,3))
-            log(f'[Main] Successfuly logged in to Reddit account {account["username"]}:{account["password"]} through {ip}')
-            await page.goto(f'{links["MESSAGE_URL"]}/{username}')
-            sleep(config['cooldown'])
-            await page.locator(locators['messageInputLocator']).fill(choice(config['messages']))
-            #async with page.expect_response(f'{links["MESSAGE_URL"]}/{username}') as response:
-            await page.locator(locators['sendButtonLocator']).click()
-            sleep(uniform(1,2))
+
+        else: # in case no proxy was provided
+
             try:
-                await page.locator(locators['unableToDMCloseLocator']).click( timeout = 2000 )
-                log(f'[Main] {account["username"]} was unable to send DM. Writing it to the database...')
-                writeToCSV(
-                    paths['toss_accounts'],
-                    [
-                        account['username'],
-                        account['password']
-                    ]
-                )
-                await page.screenshot( path=f"results/failed/{account['username']}_to_{username}#{await page.locator(locators['chatReceiverLocator']).get_attribute('title')}.png" )
+                ip = loads(
+                    get(
+                        links['GET_CONNECTION_IP']
+                    ).text
+                )['origin']
             except:
-                log(f'[Main] Message sent to {username}#{await page.locator(locators["roomReceiverLocator"]).get_attribute("title")} using {account["username"]}. Writing it to the database...')
-                writeToCSV(
-                    paths['usernames_sent'],
-                    [
-                        username,
-                        account['username']
-                    ]
-                )
-                await page.screenshot( path=f"results/succeeded/{account['username']}_to_{username}#{await page.locator(locators['roomReceiverLocator']).get_attribute('title')}.png" )
-                list_usernames.remove(username) # removing that username from the list of usernames to DM
-                used_accounts.append(account) # adding account to the list of used accounts
-        except:
-            log(f'[Main] ERROR! An exception occured while trying to DM {username} using {account["username"]}:{account["password"]}.')
-            writeToCSV(
-                paths['usernames_failed'],
-                [
-                    username,
-                    account['username']
-                ]
-            )
-        finally:
-            if(config['proxy']['proxyRotationLink'] != ''):
-                log('[Main] Rotating proxy IP...')
-                get(config['proxy']['proxyRotationLink'])
-                sleep(config['proxy']['proxyRotationCooldown'])
-            await browser.close()
+                pass
+
+        # initializing a browser of nodriver
+        browser = await nodriver.start(
+            config = browser_config
+        )
+
+        # creating an instance by navigating to Reddit's login page
+        instance = await browser.get(links['REDDIT_LOGIN_PAGE_URL'])
+
+        try: # logging in to Reddit
+
+            # finding the username input and filling it
+            username_input = await instance.select(locators['username_input_locator'], timeout = 5)
+            await username_input.send_keys(account['username'])
+
+            # finding the password input and filling it
+            password_input = await instance.select(locators['password_input_locator'], timeout = 5)
+            await password_input.send_keys(account['password'])
+
+            # finding and clicking the log in button
+            login_button = await instance.find('Log In', best_match = True)
+            await login_button.click()
+
+        except TimeoutError: # incase of wrong locators
+
+            print('beep')
+
+            # finding the username input and filling it
+            username_input = await instance.find('Email or username', best_match = True)
+            await username_input.send_keys(account['username'])
+
+            # finding the password input and filling it
+            password_input = await instance.find('Password', best_match = True)
+            await password_input.send_keys(account['password'])
+
+            # finding and clicking the log in button
+            login_button = await instance.find('Log In', best_match = True)
+            await login_button.click()
+        
+        except: # in case of other error
+
+            Modules.log(2, f'[RedditDMBot] - An error occured while trying to login to Reddit account {account["username"]}:{account["password"]} @ {ip}.')
+
+        Modules.log(0, f'[RedditDMBot] - Successfully logged in to Reddit account {account["username"]}:{account["password"]} @ {ip}.')
+
+        sleep(10)
+
+        # sending DM
+
+        # getting the id of our target first
+        await instance.get(f'{links["REDDIT_USER_PAGE_URL"]}/{target}')
+        reddit_user_data_element = await instance.find(locators['reddit_user_data_locator'])
+        target_id = loads(reddit_user_data_element.attributes[1])['profile']['id']
+        sleep(10)
+
+        # getting the chat page
+        await instance.get(f'{links["REDDIT_MESSAGE_PAGE_URL"]}/{target_id}')
+
+        sleep(10)
+        
+        # writing the message
+        message_input = await instance.find('Message', best_match = True)
+        await message_input.send_keys('HELLOOOOOOO')
+
+        send_message_button = await instance.find('Send message', best_match = True)
+        await send_message_button.click()
+
+    except:
+        # code
+        import traceback
+        print(traceback.format_exc())
+        sleep(500)
+
+    finally: # finally rotating proxy IP if a rotation link exists
+
+        if(config['proxy']['proxy_rotation_link'] != ''):
+            Modules.log(-1, '[RedditDMBot] Rotating proxy IP...')
+            get(config['proxy']['proxy_rotation_link'])
+            sleep(config['proxy']['proxy_rotation_link'])
+        await browser.close()
 
 
-def main():
-    dbToList(paths['usernames'],list_usernames)
-    accounts, used_accounts = getAccounts(), list()
+
+
+
+
+if __name__ == '__main__': # software entry point
+    config, paths, links, locators = Modules.getConfig(), Modules.getPaths(), Modules.getLinks(), Modules.getLocators()
+    Modules.dbToList(paths['usernames'],list_usernames)
+    accounts, used_accounts = Modules.getAccounts(), list()
     while(len(list_usernames) != 0): # while there are usernames to send DM to
         username = choice(list_usernames) # getting a random username from the list of usernames to DM
         if(len(accounts) == 0): # to check if all accounts are used
@@ -298,13 +300,21 @@ def main():
         try:
             account = accounts.pop(0) # getting the first account of the list accounts, then removing it
         except IndexError:
-            log('[Main] There are no more useful accounts to use.')
+            Modules.log(1, '[Main] There are no more useful accounts to use.')
             break
-        asyncio.run(RedditDMBot(used_accounts,account,username)) # entry point
-    log('[Main] Done.')
-
-
-
-
-if __name__ == '__main__':
-    main()
+        asyncio.run(
+            RedditDMBot(
+                config = config,
+                links = links,
+                paths = paths,
+                locators = locators,
+                proxy = 'localhost',
+                used_accounts = used_accounts,
+                account = {
+                    "username":"North_Engineer5264",
+                    "password":"04122024__@"
+                },
+                target = username
+            )
+        ) # entry point
+    Modules.log(-1, '[RedditDMBot] - Done.')
