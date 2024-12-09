@@ -228,9 +228,11 @@ async def RedditDMBot(
 
         except TimeoutError: # incase of wrong locators
 
+            # closing browser
             await instance.close()
-            await browser.stop()
+            #await browser.stop()
 
+            # rerunning RedditDMBot with the same account and username to DM
             return asyncio.run(
                 RedditDMBot(
                     config = config,
@@ -273,6 +275,8 @@ async def RedditDMBot(
         send_message_button = await instance.find('Send message', best_match = True)
         await send_message_button.click()
 
+        Modules.log(0, f'[RedditDMBot] - Message sent successfully to {target} using Reddit account {account["username"]}:{account["password"]} @ {ip}')
+
     except:
         
         Modules.log(2, f'[RedditDMBot] - An error occured while trying to DM {target} with Reddit account {account["username"]}:{account["password"]} @ {ip}.')
@@ -286,7 +290,7 @@ async def RedditDMBot(
 
         # closing the instance and the browser
         await instance.close()
-        await browser.stop()
+        #await browser.stop()
 
 
 
