@@ -214,21 +214,23 @@ async def RedditDMBot(
 
         try: # logging in to Reddit
 
-            # finding the username input and filling it
-            username_input = await instance.select(locators['username_input_locator'], timeout = 5)
-            await username_input.send_keys(account['username'])
+            instance.close()
+            browser.stop()
 
-            # finding the password input and filling it
-            password_input = await instance.select(locators['password_input_locator'], timeout = 5)
-            await password_input.send_keys(account['password'])
-
-            # finding and clicking the log in button
-            login_button = await instance.find('Log In', best_match = True)
-            await login_button.click()
+            return asyncio.run(
+                RedditDMBot(
+                    config = config,
+                    links = links,
+                    paths = paths,
+                    locators = locators,
+                    proxy = proxy,
+                    used_accounts = used_accounts,
+                    account = account,
+                    target = username
+                    )
+            )
 
         except TimeoutError: # incase of wrong locators
-
-            print('beep')
 
             # finding the username input and filling it
             username_input = await instance.find('Email or username', best_match = True)
@@ -248,7 +250,7 @@ async def RedditDMBot(
 
         Modules.log(0, f'[RedditDMBot] - Successfully logged in to Reddit account {account["username"]}:{account["password"]} @ {ip}.')
 
-        sleep(10)
+        sleep(config['cooldown'])
 
         # sending DM
 
@@ -256,12 +258,13 @@ async def RedditDMBot(
         await instance.get(f'{links["REDDIT_USER_PAGE_URL"]}/{target}')
         reddit_user_data_element = await instance.find(locators['reddit_user_data_locator'])
         target_id = loads(reddit_user_data_element.attributes[1])['profile']['id']
-        sleep(10)
+
+        sleep(config['cooldown'])
 
         # getting the chat page
         await instance.get(f'{links["REDDIT_MESSAGE_PAGE_URL"]}/{target_id}')
 
-        sleep(10)
+        sleep(config['cooldown'])
         
         # writing the message
         message_input = await instance.find('Message', best_match = True)
@@ -280,6 +283,8 @@ async def RedditDMBot(
             Modules.log(-1, '[RedditDMBot] Rotating proxy IP...')
             get(config['proxy']['proxy_rotation_link'])
             sleep(config['proxy']['proxy_rotation_link'])
+
+        # closing the instance and the browser
         await instance.close()
         await browser.stop()
 
@@ -299,13 +304,20 @@ if __name__ == '__main__': # software entry point
     while(len(list_usernames) != 0): # while there are usernames to send DM to
 
         username = choice(list_usernames) # getting a random username from the list of usernames to DM
+
         if(len(accounts) == 0): # to check if all accounts are used
+
             accounts, used_accounts = used_accounts, list() # repopulates accounts with used_accounts and reinitialize used_accounts to an empty list
+
         try:
+
             account = accounts.pop(0) # getting the first account of the list accounts, then removing it
-        except IndexError:
+
+        except IndexError: # in case no more accounts are in the accounts list
+
             Modules.log(1, '[Main] There are no more useful accounts to use.')
             break
+
         asyncio.run(
             RedditDMBot(
                 config = config,
