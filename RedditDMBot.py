@@ -181,15 +181,18 @@ async def RedditDMBot(
                 proxy_backend_path = paths['proxy']['proxy_backend_path'],
                 proxy = proxy
             )
-            ip = loads(
-                    get(
-                        links['GET_CONNECTION_IP'],
-                        proxies={
-                            'http':f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}",
-                            "https":f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}"
-                        }
-                    ).text
-                )['origin']
+            try:
+                ip = loads(
+                        get(
+                            links['GET_CONNECTION_IP'],
+                            proxies={
+                                'http':f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}",
+                                "https":f"http://{proxy.split(':')[2]}:{proxy.split(':')[3]}@{proxy.split(':')[0]}:{proxy.split(':')[1]}"
+                            }
+                        ).text
+                    )['query']
+            except: # in case of an error, the IP is 0
+                ip = 0
             
             browser_config.add_extension( # adding proxy extension
                 extension_path = paths['proxy']['proxy_extension_path']
@@ -202,9 +205,9 @@ async def RedditDMBot(
                     get(
                         links['GET_CONNECTION_IP']
                     ).text
-                )['origin']
-            except:
-                pass
+                )['query']
+            except: # in case of an error, the IP is 0
+                ip = 0
 
         # initializing a browser of nodriver
         browser = await nodriver.start(
@@ -228,34 +231,37 @@ async def RedditDMBot(
             login_button = await instance.find('Log In', best_match = True)
             await login_button.click()
 
-        except TimeoutError: # incase of wrong locators
+        except TimeoutError: # in case of wrong locators
 
-            # closing browser
-            await instance.close()
-            #await browser.stop()
+            print('BBBBOOOOPPPP')
 
-            # rerunning RedditDMBot with the same account and username to DM
-            return asyncio.run(
-                RedditDMBot(
-                    config = config,
-                    links = links,
-                    paths = paths,
-                    locators = locators,
-                    proxy = proxy,
-                    list_usernames = list_usernames,
-                    used_accounts = used_accounts,
-                    toss_accounts = toss_accounts,
-                    account = account,
-                    target = username,
-                    usernames_sent = usernames_sent
-                )
-            )
-        
+            # finding the username input and filling it
+            username_input = await instance.find('Email or username', best_match = True, timeout = 5)
+            await username_input.send_keys(account['username'])
+
+            # finding the password input and filling it
+            password_input = await instance.find('Password', best_match = True, timeout = 5)
+            await password_input.send_keys(account['password'])
+
+            # finding and clicking the log in button
+            login_button = await instance.find('Log In', best_match = True)
+            await login_button.click()
+
+            sleep(500)
+
         except: # in case of other error
 
             Modules.log(2, f'[RedditDMBot] - An error occured while trying to login to Reddit account {account["username"]}:{account["password"]} @ {ip}.')
+        
+        try:
 
-        Modules.log(0, f'[RedditDMBot] - Successfully logged in to Reddit account {account["username"]}:{account["password"]} @ {ip}.')
+            await instance.find('Logged in as', best_match = True, timeout = 10)
+            Modules.log(0, f'[RedditDMBot] - Successfully logged in to Reddit account {account["username"]}:{account["password"]} @ {ip}.')
+
+        except:
+            
+            Modules.log(2, f'[RedditDMBot] - Unable to log in into account {account["username"]}:{account["password"]} @ {ip}. Exiting.')
+            return
 
         sleep(config['cooldown'])
 
@@ -280,11 +286,13 @@ async def RedditDMBot(
         send_message_button = await instance.find('Send message', best_match = True)
         await send_message_button.click()
 
+        sleep(100)
+
         try: # in case the message was not sent
 
             # searching for the elements responsible for identifying whether the DM was sent or not
-            await instance.find('Unable to', best_match = True, timeout = 2)
-            await instance.find('Wow, you\'ve sent', best_match = True, timeout = 2)
+            await instance.select(locators['unable_to_DM_locator'], timeout = 3)
+            #await instance.find('Wow, you\'ve sent', best_match = True, timeout = 3)
 
             Modules.log(2, f'[RedditDMBot] - {account["username"]}:{account["password"]} @ {ip} was unable to send DM. Writing it to the database...')
             
@@ -321,6 +329,7 @@ async def RedditDMBot(
                 ]
             )
 
+        sleep(500)
         sleep(config['cooldown'])
 
     except:
