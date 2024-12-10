@@ -151,9 +151,12 @@ async def RedditDMBot(
         paths: dict,
         locators: dict,
         proxy: str,
+        list_usernames: list,
         used_accounts: list,
+        toss_accounts: list,
         account: dict,
-        target: str
+        target: str,
+        usernames_sent: list
 ) -> None:
     """
         main function responsible for sending a DM
@@ -239,9 +242,12 @@ async def RedditDMBot(
                     paths = paths,
                     locators = locators,
                     proxy = proxy,
+                    list_usernames = list_usernames,
                     used_accounts = used_accounts,
+                    toss_accounts = toss_accounts,
                     account = account,
-                    target = username
+                    target = username,
+                    usernames_sent = usernames_sent
                 )
             )
         
@@ -274,8 +280,47 @@ async def RedditDMBot(
         send_message_button = await instance.find('Send message', best_match = True)
         await send_message_button.click()
 
-        Modules.log(0, f'[RedditDMBot] - Message sent successfully to {target} using Reddit account {account["username"]}:{account["password"]} @ {ip}')
-        
+        try: # in case the message was not sent
+
+            # searching for the elements responsible for identifying whether the DM was sent or not
+            await instance.find('Unable to', best_match = True, timeout = 2)
+            await instance.find('Wow, you\'ve sent', best_match = True, timeout = 2)
+
+            Modules.log(2, f'[RedditDMBot] - {account["username"]}:{account["password"]} @ {ip} was unable to send DM. Writing it to the database...')
+            
+            # adding the username of the account that was not able to send a DM to a list of accounts to toss
+            toss_accounts.append(account['username'])
+
+            # writing the result to the database of accounts to toss
+            Modules.writeToCSV(
+                paths['toss_accounts'],
+                [
+                    account['username'],
+                    account['password'],
+                    ip
+                ]
+            )
+
+        except: # in case the DM was sent successfully
+
+            Modules.log(0, f'[RedditDMBot] - Message sent successfully to {target} using Reddit account {account["username"]}:{account["password"]} @ {ip}. Writing it to the database...')
+
+            # appending the account we used to 
+            used_accounts.append(account)
+
+            # removing the user we DMed from the list of usernames
+            list_usernames.remove(username)
+            usernames_sent.append(username)
+
+            # adding the user we DMed alongside the account we used to DM to db/usernames_sent.csv
+            Modules.writeToCSV(
+                paths['usernames_sent'],
+                [
+                    username,
+                    account['username']
+                ]
+            )
+
         sleep(config['cooldown'])
 
     except:
@@ -313,7 +358,7 @@ if __name__ == '__main__': # software entry point
 
     Modules.dbToList(paths['usernames'], list_usernames)
 
-    accounts, used_accounts = Modules.getAccounts(), list()
+    accounts, used_accounts, toss_accounts = Modules.getAccounts(), list(), list()
 
     while(len(list_usernames) != 0): # while there are usernames to send DM to
 
@@ -346,26 +391,13 @@ if __name__ == '__main__': # software entry point
                 paths = paths,
                 locators = locators,
                 proxy = proxy,
+                list_usernames = list_usernames,
                 used_accounts = used_accounts,
+                toss_accounts = toss_accounts,
                 account = account,
-                target = username
+                target = username,
+                usernames_sent = usernames_sent
             )
         ) # entry point
-
-        # appending the account we used to 
-        used_accounts.append(account)
-
-        # removing the user we DMed from the list of usernames
-        list_usernames.remove(username)
-        usernames_sent.append(username)
-
-        # adding the user we DMed alongside the account we used to DM to db/usernames_sent.csv
-        Modules.writeToCSV(
-            paths['usernames_sent'],
-            [
-                username,
-                account['username']
-            ]
-        )
 
     Modules.log(-1, '[RedditDMBot] - Done.')
