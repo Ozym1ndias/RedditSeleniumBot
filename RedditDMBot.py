@@ -3,7 +3,6 @@ from modules import *
 
 
 # Initializing components
-#config, links, paths, locators = getConfig(), getLinks(), getPaths(), getLocators()
 list_usernames, usernames_sent = list(), list()
 #
 
@@ -276,21 +275,31 @@ async def RedditDMBot(
         await send_message_button.click()
 
         Modules.log(0, f'[RedditDMBot] - Message sent successfully to {target} using Reddit account {account["username"]}:{account["password"]} @ {ip}')
+        
+        sleep(config['cooldown'])
 
     except:
         
-        Modules.log(2, f'[RedditDMBot] - An error occured while trying to DM {target} with Reddit account {account["username"]}:{account["password"]} @ {ip}.')
+        await Modules.log(2, f'[RedditDMBot] - An error occured while trying to DM {target} with Reddit account {account["username"]}:{account["password"]} @ {ip}.')
 
     finally: # finally rotating proxy IP if a rotation link exists
 
-        if(config['proxy']['proxy_rotation_link'] != ''):
-            Modules.log(-1, '[RedditDMBot] Rotating proxy IP...')
-            get(config['proxy']['proxy_rotation_link'])
-            sleep(config['proxy']['proxy_rotation_link'])
+        if(config['proxy']['proxy_type'] == 'rotative'):
+            if(config['proxy']['proxy_rotation_link'] != ''):
+                Modules.log(-1, '[RedditDMBot] Rotating proxy IP...')
+                get(config['proxy']['proxy_rotation_link'])
+                sleep(config['proxy']['proxy_rotation_link'])
+            else:
+                Modules.log(2, '[RedditDMBot] - A proxy rotation link must be provided to rotate the proxy!')
+                exit()
 
         # closing the instance and the browser
         await instance.close()
         #await browser.stop()
+
+        sleep(config['cooldown'])
+
+
 
 
 
@@ -300,8 +309,9 @@ async def RedditDMBot(
 if __name__ == '__main__': # software entry point
 
     config, paths, links, locators = Modules.getConfig(), Modules.getPaths(), Modules.getLinks(), Modules.getLocators()
+    proxies_pool = Modules.getProxies()
 
-    Modules.dbToList(paths['usernames'],list_usernames)
+    Modules.dbToList(paths['usernames'], list_usernames)
 
     accounts, used_accounts = Modules.getAccounts(), list()
 
@@ -309,18 +319,25 @@ if __name__ == '__main__': # software entry point
 
         username = choice(list_usernames) # getting a random username from the list of usernames to DM
 
+        # choosing an account to send the DM with
         if(len(accounts) == 0): # to check if all accounts are used
-
             accounts, used_accounts = used_accounts, list() # repopulates accounts with used_accounts and reinitialize used_accounts to an empty list
-
         try:
-
             account = accounts.pop(0) # getting the first account of the list accounts, then removing it
-
         except IndexError: # in case no more accounts are in the accounts list
-
-            Modules.log(1, '[Main] There are no more useful accounts to use.')
+            Modules.log(1, '[RedditDMBot] There are no more useful accounts to use.')
             break
+
+        # choosing a proxy to use
+        if(config['proxy']['proxy_type'] == 'localhost'): proxy = 'localhost'
+        elif(config['proxy']['proxy_type'] == 'sticky'):
+            try:
+                proxy = proxies_pool['sticky'].pop(0)
+            except IndexError:
+                Modules.log(1, '[RedditDMBot] There are no more useful proxies to use.')
+                break
+        elif(config['proxy']['proxy_type'] == 'rotative'):
+            proxy = proxies_pool['rotative'][0]
 
         asyncio.run(
             RedditDMBot(
@@ -328,14 +345,27 @@ if __name__ == '__main__': # software entry point
                 links = links,
                 paths = paths,
                 locators = locators,
-                proxy = 'localhost',
+                proxy = proxy,
                 used_accounts = used_accounts,
-                account = {
-                    "username":"North_Engineer5264",
-                    "password":"04122024__@"
-                },
+                account = account,
                 target = username
             )
         ) # entry point
+
+        # appending the account we used to 
+        used_accounts.append(account)
+
+        # removing the user we DMed from the list of usernames
+        list_usernames.remove(username)
+        usernames_sent.append(username)
+
+        # adding the user we DMed alongside the account we used to DM to db/usernames_sent.csv
+        Modules.writeToCSV(
+            paths['usernames_sent'],
+            [
+                username,
+                account['username']
+            ]
+        )
 
     Modules.log(-1, '[RedditDMBot] - Done.')
